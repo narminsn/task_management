@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Realtime Example</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
+    {#    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js"></script>#}
+    {#    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js"></script>#}
+</head>
+<body>
+
+<div class="jumbotron text-center">
+    <h1>My First Realtime app</h1>
+    <p>{{ task.name }}</p>
+    <a href="/" target="_blank">Open other link</a>
+</div>
+
+
+<div class="container">
+    <div class="col-md-12">
+        <div class="card" style="border: 2px solid #37313114;
+    border-radius: 25px;
+    padding-left: 32px;">
+            <div id="{{ field.id }}" class="card-body">
+                <div class="row">
+                    <div class="col-md-8">
+                        <h1 style="color: rebeccapurple;" class="card-title">Done</h1>
+
+                    </div>
+                    <div style="    padding-top: 36px;" class="col-md-4">
+
+                    </div>
+                </div>
+
+                <hr>
+
+                <div class="row">
+                    <div class="col-md-8">
+                        {#                            <p class="card-text">{{ task.content }}</p>#}
+                        <h3 style="margin-top: 0;" task-id="{{ task.id }}" class="card-text">{{ task.name }}</h3>
+
+                    </div>
+                    <div class="col-md-4">
+                                        <span data-toggle="modal" data-target="#taskModal" project-id="{{ field.id }}"
+                                              task-id="{{ task.id }}"
+                                              style="padding-left: 86px;color:#337ab7;"
+                                              class="glyphicon glyphicon-edit task-edit"></span>
+                        <span data-toggle="modal" data-target="#deletemodal" project-id="{{ field.id }}"
+                              task-id="{{ task.id }}"
+                              style="margin-left: 6px;color:#337ab7;"
+                              class="glyphicon glyphicon-trash task-delete"></span>
+                        <ul>
+                            <li style="color: #1d061e;font-size: 16px;">{{ task.type }}</li>
+                        </ul>
+                        <p class="date-p"
+                           style="color: #176bb5;">{{ task.expiration_date|date:'Y-m-d H:i:s' }}</p>
+
+
+                    </div>
+                    <div style="padding-left: 291px;" class="col-md-12">
+
+                    </div>
+                    <div class="col-md-8">
+                        <p class="content-p">{{ task.content }}</p>
+                    </div>
+
+                    <div class="col-md-4">
+                        <button type="button" class="btn btn-success set_undone">Un Done</button>
+                    </div>
+
+                </div>
+                <hr>
+
+
+            </div>
+        </div>
+    </div>
+    <br><br>
+    <div class="row">
+
+        <div class="col-sm-12">
+            <ul class="list-group">
+
+
+            </ul>
+            <div class="form-group">
+                <label for="comment">Comment:</label>
+                <textarea name="comment" id="comment" cols="30" rows="10" class="form-control"></textarea>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<script type="application/javascript">
+    var comment;
+    var from_name = '{{ from_name.id }}';
+    var to_name = '{{ to_name.id }}'
+    var arr = [Number(to_name), Number(from_name)]
+    console.log(arr.sort())
+
+    if (location.protocol === 'https:') {
+        comment = new WebSocket('wss://' + window.location.host + '/comments/' + `${arr[0]}/` + `${arr[1]}/` + '{{ task.id }}');
+    } else {
+        comment = new WebSocket('ws://' + window.location.host + '/comments/' + `${arr[0]}/` + `${arr[1]}/` + '{{ task.id }}');
+    }
+
+    comment.onopen = function open() {
+        console.log('Connect to Socket');
+    };
+
+    comment.onmessage = function message(event) {
+        var data = JSON.parse(event.data);
+        console.log("Socket response => ", data);
+        if (data.hasOwnProperty("connection")) {
+            if (!isNaN(data.connection)) {
+                $("#count").text(data.connection);
+            }
+        } else if (data.hasOwnProperty("comment")) {
+            $(".list-group").prepend(
+                `<li class="list-group-item"><span style="color:blue;">${data.fromuser}</span> <br>  ${data.comment}</li>`
+            )
+        } else if (data.hasOwnProperty("delete")) {
+            $(".list-group").html("");
+        }
+        if (data.hasOwnProperty("data")) {
+            for (var i = 0; i < data.data.length; i++) {
+                $(".list-group").prepend(
+                    `<li class="list-group-item"><span style="color:blue;">${data.data[i].fromuser}</span> <br>  ${data.data[i].comment}</li>`
+                )
+
+
+            }
+        }
+    };
+
+    if (comment.readyState === WebSocket.OPEN) {
+        comment.onopen();
+    }
+
+    $("#comment").keypress(function (e) {
+        var text = $(this).val();
+        if (e.keyCode === 13) {
+            e.preventDefault();
+            $(this).val('');
+            comment.send(JSON.stringify({
+                "from-user": to_name,
+                "to-user": from_name,
+                "comment": text
+            }))
+        }
+    });
+
+    $(".btn-danger").click(function (e) {
+        comment.send(JSON.stringify({
+            "delete": "all"
+        }))
+    });
+
+
+</script>
+
+</body>
+</html>
